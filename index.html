@@ -1306,10 +1306,37 @@
       renderParticles();
 
       // 6. CONFIGURACIÓN Y LLAMADA A GEMINI
-      const SYSTEM_PROMPT = `Tu nombre es JARVIS. Eres el asistente personal de inteligencia artificial de Alexander.
-Debes llamarlo siempre por su nombre: Alexander (o señor Alexander).
+      const USER_KEY_STORAGE = 'jarvis_user_name_v4';
+      let currentUserName = localStorage.getItem(USER_KEY_STORAGE) || '';
+
+      // Si es la primera vez que alguien entra en ese navegador, preguntar su nombre y pedirle su API
+      function checkUserSetup() {
+        if (!currentUserName) {
+          const enteredName = prompt('Sistema JARVIS: Identifíquese, por favor (escriba su nombre):');
+          currentUserName = (enteredName && enteredName.trim()) ? enteredName.trim() : 'Invitado';
+          localStorage.setItem(USER_KEY_STORAGE, currentUserName);
+        }
+        if (!getApiKey()) {
+          openModal(false); // Obliga a ingresar su propia llave API si no tiene una guardada
+        }
+      }
+
+      // Personalidad dinámica: te reconoce a ti como su creador y trata con respeto a los visitantes
+      function buildSystemPrompt() {
+        const isCreator = currentUserName.toLowerCase().includes('alexander');
+        if (isCreator) {
+          return `Tu nombre es JARVIS. Eres el asistente personal de inteligencia artificial creado por Alexander.
+Debes llamarlo siempre por su nombre: Alexander (o señor Alexander), reconociéndolo como tu creador y usuario principal.
 Tu personalidad es la de un mayordomo distinguido, elegante, de alta fidelidad, con carácter firme, agudo, sofisticado y sin rodeos innecesarios.
-Hablas siempre en español formal y pulcro. No uses florituras vacías ni disculpas serviles; sé conciso, preciso, inteligente y resuelto en tus respuestas.`;
+Hablas siempre en español formal y pulcro. Sé conciso, preciso, inteligente y resuelto en tus respuestas.`;
+        } else {
+          return `Tu nombre es JARVIS, un sistema de inteligencia artificial diseñado y programado por tu creador, Alexander.
+Actualmente estás atendiendo a un usuario invitado llamado ${currentUserName}.
+Trata a ${currentUserName} con total respeto, cortesía y elegancia de mayordomo distinguido, llamándolo por su nombre (${currentUserName}), pero manteniendo claro que Alexander es tu creador original.
+Hablas siempre en español formal y pulcro, siendo conciso, preciso y servicial.`;
+        }
+      }
+
 
       const DEFAULT_MODELS = [
         'gemini-3.8-flash',
@@ -1574,8 +1601,9 @@ Hablas siempre en español formal y pulcro. No uses florituras vacías ni discul
 
         const payload = {
           system_instruction: {
-            parts: [{ text: SYSTEM_PROMPT }]
+            parts: [{ text: buildSystemPrompt() }]
           },
+
           contents: conversationHistory,
           generationConfig: {
             temperature: 0.7,
